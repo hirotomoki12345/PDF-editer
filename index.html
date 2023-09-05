@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Editor</title>
+    <!-- PDF.jsのスクリプトを読み込みます -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.233/pdf.js"></script>
+</head>
+<body>
+    <h1>PDF Editor</h1>
+    
+    <!-- ファイル選択フォーム -->
+    <input type="file" id="pdf-file" accept=".pdf">
+    
+    <!-- PDFを表示する領域 -->
+    <div id="pdf-container">
+        <!-- PDFページがここに表示されます -->
+    </div>
+    
+    <!-- 編集ボタン -->
+    <button id="edit-button">Edit PDF</button>
+    
+    <!-- ダウンロードボタン -->
+    <a id="download-link" style="display: none;">Download Edited PDF</a>
+
+    <!-- JavaScriptコードを読み込みます -->
+    <script src="pdf-editor.js"></script>
+</body>
+</html>
