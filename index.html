@@ -4,27 +4,104 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Editor</title>
-    <!-- PDF.jsのスクリプトを読み込みます -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.233/pdf.js"></script>
+    <style>
+        /* スタイリング用のCSSを追加できます */
+    </style>
 </head>
 <body>
     <h1>PDF Editor</h1>
-    
-    <!-- ファイル選択フォーム -->
-    <input type="file" id="pdf-file" accept=".pdf">
-    
-    <!-- PDFを表示する領域 -->
-    <div id="pdf-container">
-        <!-- PDFページがここに表示されます -->
-    </div>
-    
-    <!-- 編集ボタン -->
-    <button id="edit-button">Edit PDF</button>
-    
-    <!-- ダウンロードボタン -->
-    <a id="download-link" style="display: none;">Download Edited PDF</a>
 
-    <!-- JavaScriptコードを読み込みます -->
-    <script src="pdf-editor.js"></script>
+    <!-- PDF アップロードフォーム -->
+    <input type="file" id="pdfInput" accept=".pdf">
+    
+    <!-- ページに PDF を表示するキャンバス -->
+    <canvas id="pdfCanvas" style="border: 1px solid black;"></canvas>
+
+    <!-- ページに描画するためのツールボックス（ボタン） -->
+    <div>
+        <button id="drawButton">Draw</button>
+        <button id="downloadButton">Download</button>
+    </div>
+
+    <!-- JavaScript を読み込む -->
+    <script>
+        const pdfInput = document.getElementById('pdfInput');
+        const pdfCanvas = document.getElementById('pdfCanvas');
+        const drawButton = document.getElementById('drawButton');
+        const downloadButton = document.getElementById('downloadButton');
+        let pdfDocument = null;
+        let pdfPage = null;
+        let pdfCanvasContext = pdfCanvas.getContext('2d');
+        
+        // PDF ファイルを読み込む関数
+        function loadPDF(file) {
+            const fileReader = new FileReader();
+            fileReader.onload = function (e) {
+                const arrayBuffer = e.target.result;
+                pdfjsLib.getDocument(arrayBuffer).promise.then(function (doc) {
+                    pdfDocument = doc;
+                    loadPage(1); // 最初のページを表示
+                });
+            };
+            fileReader.readAsArrayBuffer(file);
+        }
+
+        // PDF ページを表示する関数
+        function loadPage(pageNumber) {
+            pdfDocument.getPage(pageNumber).then(function (page) {
+                pdfPage = page;
+                const viewport = pdfPage.getViewport({ scale: 1.5 });
+                pdfCanvas.width = viewport.width;
+                pdfCanvas.height = viewport.height;
+
+                // PDF ページをキャンバスに描画
+                page.render({ canvasContext: pdfCanvasContext, viewport: viewport });
+            });
+        }
+
+        // 描画ボタンをクリックしたときの処理
+        drawButton.addEventListener('click', function () {
+            if (pdfPage) {
+                // ここに描画処理を追加
+                pdfCanvasContext.strokeStyle = 'red';
+                pdfCanvasContext.lineWidth = 5;
+                pdfCanvasContext.beginPath();
+                pdfCanvasContext.moveTo(50, 50);
+                pdfCanvasContext.lineTo(200, 200);
+                pdfCanvasContext.stroke();
+            }
+        });
+
+        // ダウンロードボタンをクリックしたときの処理
+        downloadButton.addEventListener('click', function () {
+            if (pdfPage) {
+                // 編集した PDF をダウンロード
+                pdfPage.getOperatorList().then(function (ops) {
+                    const svgGfx = new pdfjsLib.SVGGraphics(pdfPage.commonObjs, pdfPage.objs);
+                    return svgGfx.getSVG(ops, pdfPage.commonObjs, pdfPage.objs);
+                }).then(function (svg) {
+                    // SVG を Blob に変換してダウンロードリンクを生成
+                    const svgBlob = new Blob([svg], { type: 'image/svg+xml' });
+                    const svgUrl = URL.createObjectURL(svgBlob);
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = svgUrl;
+                    downloadLink.download = 'edited_pdf.svg';
+                    downloadLink.click();
+                    URL.revokeObjectURL(svgUrl);
+                });
+            }
+        });
+
+        // PDF ファイルが選択されたときの処理
+        pdfInput.addEventListener('change', function () {
+            const selectedFile = pdfInput.files[0];
+            if (selectedFile) {
+                loadPDF(selectedFile);
+            }
+        });
+    </script>
+
+    <!-- PDF.js ライブラリの読み込み -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.229/pdf.min.js"></script>
 </body>
 </html>
