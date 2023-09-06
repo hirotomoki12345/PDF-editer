@@ -3,103 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Editor</title>
+    <title>PDF Doodle</title>
     <style>
-        /* スタイリング用のCSSを追加できます */
+        #pdfContainer {
+            position: relative;
+        }
+        #pdfCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none; /* キャンバスをクリックできないようにする */
+        }
     </style>
 </head>
 <body>
-    <h1>PDF Editor</h1>
-
-    <!-- PDF アップロードフォーム -->
-    <input type="file" id="pdfInput" accept=".pdf">
-    
-    <!-- ページに PDF を表示するキャンバス -->
-    <canvas id="pdfCanvas" style="border: 1px solid black;"></canvas>
-
-    <!-- ページに描画するためのツールボックス（ボタン） -->
-    <div>
-        <button id="drawButton">Draw</button>
-        <button id="downloadButton">Download</button>
+    <div id="pdfContainer">
+        <iframe src="your_pdf_file.pdf" width="100%" height="100%" frameborder="0"></iframe>
+        <canvas id="pdfCanvas"></canvas>
     </div>
 
-    <!-- JavaScript を読み込む -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.229/pdf.min.js"></script>
+    <button id="captureButton">Capture</button>
+
     <script>
-        const pdfInput = document.getElementById('pdfInput');
-        const pdfCanvas = document.getElementById('pdfCanvas');
-        const drawButton = document.getElementById('drawButton');
-        const downloadButton = document.getElementById('downloadButton');
-        let pdfDocument = null;
-        let pdfPage = null;
-        let pdfCanvasContext = pdfCanvas.getContext('2d');
-        
-        // PDF ファイルを読み込む関数
-        function loadPDF(file) {
-            const fileReader = new FileReader();
-            fileReader.onload = function (e) {
-                const arrayBuffer = e.target.result;
-                pdfjsLib.getDocument(arrayBuffer).promise.then(function (doc) {
-                    pdfDocument = doc;
-                    loadPage(1); // 最初のページを表示
-                });
-            };
-            fileReader.readAsArrayBuffer(file);
-        }
+        // your_script.js
 
-        // PDF ページを表示する関数
-        function loadPage(pageNumber) {
-            pdfDocument.getPage(pageNumber).then(function (page) {
-                pdfPage = page;
-                const viewport = pdfPage.getViewport({ scale: 1.5 });
-                pdfCanvas.width = viewport.width;
-                pdfCanvas.height = viewport.height;
+document.addEventListener("DOMContentLoaded", function () {
+    const pdfCanvas = document.getElementById("pdfCanvas");
+    const captureButton = document.getElementById("captureButton");
+    const pdfContainer = document.getElementById("pdfContainer");
 
-                // PDF ページをキャンバスに描画
-                page.render({ canvasContext: pdfCanvasContext, viewport: viewport });
-            });
-        }
+    const pdfIframe = document.querySelector("iframe"); // PDF ファイルを表示する iframe
 
-        // 描画ボタンをクリックしたときの処理
-        drawButton.addEventListener('click', function () {
-            if (pdfPage) {
-                // ここに描画処理を追加
-                pdfCanvasContext.strokeStyle = 'red';
-                pdfCanvasContext.lineWidth = 5;
-                pdfCanvasContext.beginPath();
-                pdfCanvasContext.moveTo(50, 50);
-                pdfCanvasContext.lineTo(200, 200);
-                pdfCanvasContext.stroke();
+    const ctx = pdfCanvas.getContext("2d");
+
+    pdfIframe.onload = function () {
+        const iframeDocument = pdfIframe.contentDocument || pdfIframe.contentWindow.document;
+        const iframeWindow = pdfIframe.contentWindow || window;
+
+        // iframe の幅と高さを設定
+        pdfCanvas.width = iframeDocument.body.scrollWidth;
+        pdfCanvas.height = iframeDocument.body.scrollHeight;
+
+        // iframe の内容をキャンバスに描画
+        ctx.drawImage(iframeWindow.document.body, 0, 0);
+
+        // キャンバス上に描画
+        pdfCanvas.addEventListener("mousemove", function (e) {
+            if (isDrawing) {
+                const rect = pdfCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                ctx.strokeStyle = "red";
+                ctx.lineWidth = 5;
+                ctx.lineCap = "round";
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+
+                lastX = x;
+                lastY = y;
             }
         });
 
-        // ダウンロードボタンをクリックしたときの処理
-        downloadButton.addEventListener('click', function () {
-            if (pdfPage) {
-                // 編集した PDF をダウンロード
-                pdfPage.getOperatorList().then(function (ops) {
-                    const svgGfx = new pdfjsLib.SVGGraphics(pdfPage.commonObjs, pdfPage.objs);
-                    return svgGfx.getSVG(ops, pdfPage.commonObjs, pdfPage.objs);
-                }).then(function (svg) {
-                    // SVG を Blob に変換してダウンロードリンクを生成
-                    const svgBlob = new Blob([svg], { type: 'image/svg+xml' });
-                    const svgUrl = URL.createObjectURL(svgBlob);
-                    const downloadLink = document.createElement('a');
-                    downloadLink.href = svgUrl;
-                    downloadLink.download = 'edited_pdf.svg';
-                    downloadLink.click();
-                    URL.revokeObjectURL(svgUrl);
-                });
-            }
+        // 描画を開始
+        pdfCanvas.addEventListener("mousedown", (e) => {
+            isDrawing = true;
+            lastX = e.offsetX;
+            lastY = e.offsetY;
         });
 
-        // PDF ファイルが選択されたときの処理
-        pdfInput.addEventListener('change', function () {
-            const selectedFile = pdfInput.files[0];
-            if (selectedFile) {
-                loadPDF(selectedFile);
-            }
+        // 描画を停止
+        pdfCanvas.addEventListener("mouseup", () => (isDrawing = false));
+        pdfCanvas.addEventListener("mouseout", () => (isDrawing = false));
+
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+    };
+
+    // 画面キャプチャの処理
+    captureButton.addEventListener("click", function () {
+        html2canvas(pdfContainer, { scale: 2 }).then(function (canvas) {
+            const image = canvas.toDataURL("image/png");
+
+            // キャプチャした画像をダウンロードするなどの処理を行うことができます
+            const downloadLink = document.createElement("a");
+            downloadLink.href = image;
+            downloadLink.download = "doodle.png";
+            downloadLink.click();
         });
+    });
+});
+
     </script>
 </body>
 </html>
